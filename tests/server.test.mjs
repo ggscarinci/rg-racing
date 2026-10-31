@@ -46,7 +46,8 @@ test('authenticated API, atomic writes, idempotency, concurrency, SSE and restar
     assert.equal((await request('/api/admin/state')).status,401);
     assert.equal((await request('/api/login',{username:'operador',password:'kart-demo-2026'})).status,401);
     assert.equal((await request('/api/login',{username:'operador',password:'new-test-password-2026'})).status,200);
-    for(const path of ['/','/admin','/tv','/cronograma','/ranking','/piloto','/karts','/app.js','/stats.js','/styles.css']) assert.equal((await request(path)).status,200,path);
+    for(const path of ['/','/admin','/tv','/cronograma','/ranking','/piloto','/karts','/app.js','/stats.js','/styles.css','/branding.css','/assets/rg-racing-logo.png']) assert.equal((await request(path)).status,200,path);
+    assert.match((await request('/assets/rg-racing-logo.png')).headers.get('content-type'),/^image\/png/);
     assert.equal((await request('/src/server.mjs')).status,404);
   } finally { app.close();rmSync(dir,{recursive:true,force:true}); }
 });

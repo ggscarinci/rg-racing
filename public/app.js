@@ -21,16 +21,39 @@ const icons = {
   sound: '<path d="m3 9 4 0 5-5v16l-5-5H3zm13-3a9 9 0 0 1 0 12m-1-9a4 4 0 0 1 0 6"/>',
   expand: '<path d="M8 3H3v5m13-5h5v5M3 16v5h5m13-5v5h-5"/>',
   exit: '<path d="M10 3H3v18h7m4-14 5 5-5 5m-6-5h11"/>',
-  person: '<circle cx="12" cy="7" r="4"/><path d="M4 22v-3a8 8 0 0 1 16 0v3"/>'
+  person: '<circle cx="12" cy="7" r="4"/><path d="M4 22v-3a8 8 0 0 1 16 0v3"/>',
+  sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M5 19l1.5-1.5m11-11L19 5"/>',
+  moon: '<path d="M20.5 13A8.5 8.5 0 0 1 11 3.5 8.5 8.5 0 1 0 20.5 13Z"/>'
 };
 const icon = (name, cls = '') => `<svg class="icon ${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${icons[name] || icons.flag}</svg>`;
-const brand = `<a href="/" class="brand" aria-label="RG Racing início"><span class="brand-mark">RG</span><span>RG <b>RACING</b><small>RACE CONTROL</small></span></a>`;
+const brand = `<a href="/" class="brand" aria-label="RG Racing início"><img class="brand-logo" src="/assets/rg-racing-logo.png" alt="RG Racing" width="365" height="182" decoding="async"></a>`;
 const statusNames = {scheduled:'Agendado',parc:'Parque fechado',drawing:'Em sorteio',closed:'Sorteio encerrado',on_track:'Na pista',finished:'Encerrada'};
 const phaseNames = {ready:'Pronto para começar',drawing:'Sorteio em andamento',swap_ready:'Aguardando sorteio das trocas',swaps:'Sorteio das trocas',complete:'Sorteio encerrado'};
 const badge = (name, value = name) => `<span class="badge ${e(name)}">${e(value)}</span>`;
 const query = new URLSearchParams(location.search);
 const isAdmin = location.pathname.replace(/\/$/, '') === '/admin';
 const isTV = location.pathname.replace(/\/$/, '') === '/tv';
+const themeKey = 'rg-racing.admin-theme';
+let adminTheme = 'light';
+try { if (localStorage.getItem(themeKey) === 'dark') adminTheme = 'dark'; } catch {}
+function themeToggle() {
+  return `<button class="btn small theme-toggle" data-action="theme" aria-label="Ativar tema ${adminTheme==='dark'?'claro':'escuro'} na gestão" aria-pressed="${adminTheme==='dark'}">${icon(adminTheme==='dark'?'sun':'moon')}<span>Tema ${adminTheme==='dark'?'claro':'escuro'}</span></button>`;
+}
+function applyTheme() {
+  const selected = isAdmin ? adminTheme : 'light';
+  document.body.dataset.theme = selected;
+  document.documentElement.style.colorScheme = selected;
+  document.querySelector('meta[name="theme-color"]')?.setAttribute('content', selected==='dark'?'#10141d':'#ffffff');
+  document.querySelectorAll('[data-action="theme"]').forEach(button => {
+    button.innerHTML = `${icon(adminTheme==='dark'?'sun':'moon')}<span>Tema ${adminTheme==='dark'?'claro':'escuro'}</span>`;
+    button.setAttribute('aria-label', `Ativar tema ${adminTheme==='dark'?'claro':'escuro'} na gestão`);
+    button.setAttribute('aria-pressed', String(adminTheme==='dark'));
+  });
+}
+applyTheme();
+addEventListener('storage', message => {
+  if (message.key === themeKey && isAdmin) { adminTheme = message.newValue === 'dark' ? 'dark' : 'light'; applyTheme(); }
+});
 let S, session = {}, view = query.get('tab') || 'draw', online = false, offset = 0, stream;
 let eventId = query.get('evento'), heatId = query.get('bateria'), category = query.get('cat'), discard = true;
 let lastMessageAt = Date.now();
@@ -101,6 +124,7 @@ function render(force = false) {
   const scrolls = [...document.querySelectorAll('[data-scroll]')].map(x => [x.dataset.scroll,x.scrollTop]);
   document.title = `${isAdmin ? 'Operação' : isTV ? 'Sorteio ao vivo' : 'Campeonato'} • RG Racing`;
   document.body.className = isTV ? 'tv-body' : isAdmin ? 'admin-body' : 'public-body';
+  applyTheme();
   app.innerHTML = isAdmin ? session.authenticated ? adminLayout() : loginPage() : isTV ? tvPage() : publicLayout();
   for (const [key, top] of scrolls) { const el = document.querySelector(`[data-scroll="${key}"]`); if (el) el.scrollTop = top; }
   netStatus(); updateClocks();
@@ -109,7 +133,7 @@ function adminLayout() {
   const nav = [['draw','shuffle','Parque fechado'],['pilots','users','Pilotos'],['karts','kart','Frota de karts'],['schedule','clock','Baterias e cronograma'],['results','trophy','Resultados'],['settings','settings','Configurações'],['audit','list','Histórico de operações']];
   const title = nav.find(x => x[0] === view)?.[2] || 'Parque fechado';
   return `<div class="admin-shell"><aside class="sidebar">${brand}<div class="workspace-label">PAINEL DA ORGANIZAÇÃO</div><nav aria-label="Gestão">${nav.map(([id,symbol,label]) => `<button data-view="${id}" class="nav-item ${view===id?'active':''}">${icon(symbol)}<span>${label}</span>${id==='draw'?'<span class="nav-dot"></span>':''}</button>`).join('')}</nav><div class="sidebar-bottom"><a href="/" target="_blank" class="nav-item">${icon(externalIcon())}Portal do evento ${icon('external')}</a><div class="operator"><span class="avatar">OP</span><span><b>${e(session.username)}</b><small>Controle de prova</small></span><button class="icon-btn" data-action="logout" aria-label="Sair">${icon('exit')}</button></div></div></aside>
-  <div class="admin-workspace"><header class="admin-header"><div class="breadcrumb">Operação <span>/</span> <strong>${e(title)}</strong></div><div class="header-actions"><span data-connection></span><button class="icon-btn" data-action="logout" aria-label="Sair da operação" title="Sair">${icon('exit')}</button><a href="/tv${contextQuery()}" target="_blank" class="btn small">${icon('tv')}Abrir TV ${icon('external')}</a></div></header>
+  <div class="admin-workspace"><header class="admin-header"><div class="breadcrumb">Operação <span>/</span> <strong>${e(title)}</strong></div><div class="header-actions">${themeToggle()}<span data-connection></span><button class="icon-btn" data-action="logout" aria-label="Sair da operação" title="Sair">${icon('exit')}</button><a href="/tv${contextQuery()}" target="_blank" class="btn small">${icon('tv')}Abrir TV ${icon('external')}</a></div></header>
   <main id="main" class="admin-main"><div class="page-heading"><div><div class="eyebrow">RG RACING / CONTROLE DE PROVA</div><h1>${e(title)}</h1><p>${view==='draw'?'Cada piloto, cada kart, no seu tempo.':e(event().name)}</p></div><div class="heading-controls">${selectEvents()}${actionButton('new-event','Novo evento','plus','small')}</div></div>
   ${event().demo ? '<div class="demo-note">AMBIENTE DE DEMONSTRAÇÃO <span>Os pilotos e as baterias abaixo são exemplos. Crie um evento para começar.</span></div>' : ''}
   ${view === 'draw' ? drawAdmin() : view === 'pilots' ? pilotsAdmin() : view === 'karts' ? kartsAdmin() : view === 'schedule' ? scheduleAdmin() : view === 'results' ? resultsAdmin() : view === 'settings' ? settingsAdmin() : auditAdmin()}
@@ -210,7 +234,7 @@ function auditAdmin() {
   return `<section class="panel"><div class="panel-heading"><h2>Registro de operações</h2>${actionButton('refresh-audit','Atualizar','list','small')}</div><p class="panel-description">Sorteios, trocas, autorizações e alterações ficam registrados com operador, horário e hash encadeado. A exportação inclui o histórico completo.</p><div class="table-wrap"><table><thead><tr><th>Data / hora</th><th>Operador</th><th>Ação</th><th>Detalhes</th></tr></thead><tbody>${(S.audit||[]).map(a=>`<tr><td>${e(new Date(a.at).toLocaleString('pt-BR',{timeZone:event().timezone}))}</td><td>${e(a.actor)}</td><td><code>${e(a.action)}</code></td><td><details><summary>Ver registro #${a.id}</summary><pre>${e(a.detail)}</pre></details></td></tr>`).join('') || '<tr><td colspan="4">Use Atualizar para consultar os registros.</td></tr>'}</tbody></table></div></section>`;
 }
 function loginPage() {
-  return `<div class="login-layout"><div class="login-intro">${brand}<div><span class="eyebrow">ORGANIZAÇÃO NO CONTROLE</span><h1>A próxima largada<br>começa aqui<span>.</span></h1><p>Sorteios, parque fechado e informação ao vivo. Toda a operação em um só lugar.</p><div class="racing-lines"><i></i><i></i><i></i><i></i></div></div><small>RG RACING · CONTROLE DE PROVA</small></div><main id="main" class="login-main"><div class="login-box"><span class="eyebrow">ÁREA DA ORGANIZAÇÃO</span><h2>Acesse o controle de prova</h2><p>Entre para gerenciar o evento e os sorteios.</p><form id="login-form"><label>Usuário<input name="username" autocomplete="username" required value="${session.demo?'operador':''}"></label><label>Senha<input name="password" type="password" autocomplete="current-password" required></label><button class="btn primary" type="submit">Entrar na operação ${icon('arrow')}</button></form>${session.demo?'<div class="inline-note"><b>Demonstração</b><br>Usuário: operador · Senha: kart-demo-2026</div>':''}<a href="/" class="back-link">← Voltar ao portal público</a></div></main></div>`;
+  return `<div class="login-layout"><div class="login-intro">${brand}<div><span class="eyebrow">ORGANIZAÇÃO NO CONTROLE</span><h1>A próxima largada<br>começa aqui<span>.</span></h1><p>Sorteios, parque fechado e informação ao vivo. Toda a operação em um só lugar.</p><div class="racing-lines"><i></i><i></i><i></i><i></i></div></div><small>RG RACING · CONTROLE DE PROVA</small></div><main id="main" class="login-main"><div class="login-tools">${themeToggle()}</div><div class="login-box"><span class="eyebrow">ÁREA DA ORGANIZAÇÃO</span><h2>Acesse o controle de prova</h2><p>Entre para gerenciar o evento e os sorteios.</p><form id="login-form"><label>Usuário<input name="username" autocomplete="username" required value="${session.demo?'operador':''}"></label><label>Senha<input name="password" type="password" autocomplete="current-password" required></label><button class="btn primary" type="submit">Entrar na operação ${icon('arrow')}</button></form>${session.demo?'<div class="inline-note"><b>Demonstração</b><br>Usuário: operador · Senha: kart-demo-2026</div>':''}<a href="/" class="back-link">← Voltar ao portal público</a></div></main></div>`;
 }
 function publicLayout() {
   const path = location.pathname.replace(/\/$/,'') || '/';
@@ -220,7 +244,7 @@ function publicLayout() {
 function landing() {
   const h = heat();
   const cards = [['/tv','shuffle','Sorteio ao vivo','Veja seu kart e acompanhe as trocas.'],['/cronograma','clock','Cronograma e baterias','Saiba quando você entra na pista.'],['/ranking','trophy','Resultados e classificação','Cada bateria conta. Confira os pontos.'],['/piloto','person','Área do piloto','Seu kart, suas baterias e seus resultados.'],['/karts','kart','Performance dos karts','Acompanhe a frota do campeonato.']];
-  return `<section class="hero"><div class="hero-copy"><div class="eyebrow"><i></i> RG RACING · KART INDOOR</div><h1>O evento acontece.<br>Você acompanha<span>.</span></h1><p>${e(event().name)}</p><div class="hero-meta">${icon('flag')}${date(event().date)} ${event().location?`<span>•</span>${e(event().location)}`:''}</div><a href="/tv${contextQuery()}" class="btn primary">Acompanhar sorteio ${icon('arrow')}</a></div><div class="hero-race"><div class="track-art" aria-hidden="true"><svg viewBox="0 0 500 400" fill="none"><path d="M55 300V155c0-60 70-102 124-80l82 34c50 21 62-46 108-46 63 0 86 70 46 109l-84 82c-28 27-8 52 16 52h55c41 0 43 61 0 61H124c-43 0-69-27-69-67Z" stroke="currentColor" stroke-width="38"/><path d="M55 300V155c0-60 70-102 124-80l82 34c50 21 62-46 108-46 63 0 86 70 46 109l-84 82c-28 27-8 52 16 52h55c41 0 43 61 0 61H124c-43 0-69-27-69-67Z" stroke="#c4f456" stroke-width="2" stroke-dasharray="8 8"/></svg><span class="track-pin">RG</span></div><div class="hero-live"><span class="eyebrow">ACONTECENDO AGORA</span><strong>${h?e(h.category):'Aguardando o evento'}</strong><span>${h?`Série ${h.series} · Bateria ${h.round}`:'O cronograma será publicado aqui'}</span>${h?badge(h.status,statusNames[h.status]):''}</div></div></section><div class="section-title"><div><span class="eyebrow">CENTRAL DO CAMPEONATO</span><h2>Seu acesso à pista.</h2></div><span data-connection></span></div><div class="portal-grid">${cards.map(([url,symbol,title,desc],i)=>`<a href="${url}${contextQuery()}" class="portal-card ${i===0?'featured':''}"><span class="portal-icon">${icon(symbol)}</span><span class="portal-number">0${i+1}</span><h3>${title}</h3><p>${desc}</p><span class="portal-arrow">${icon('arrow')}</span></a>`).join('')}${event().links.map((link,i)=>`<a href="${e(link.url)}" class="portal-card" target="_blank" rel="noopener noreferrer"><span class="portal-icon">${icon('external')}</span><span class="portal-number">${String(i+6).padStart(2,'0')}</span><h3>${e(link.title)}</h3><p>Informações e links da organização.</p><span class="portal-arrow">${icon('external')}</span></a>`).join('')}</div><section class="how-it-works"><span class="eyebrow">COMO FUNCIONA O SORTEIO</span><div><h2>O mesmo ponto de partida<br>para todo o grid.</h2><p>Os pilotos entram em ordem alfabética. Pilotos e karts são embaralhados separadamente. Cada número revelado abre uma janela de ${event().swapSeconds} segundos para solicitar uma troca à organização. As trocas entram em uma fila para um novo sorteio.</p></div></section>`;
+  return `<section class="hero"><div class="hero-copy"><div class="eyebrow"><i></i> RG RACING · KART INDOOR</div><h1>O evento acontece.<br>Você acompanha<span>.</span></h1><p>${e(event().name)}</p><div class="hero-meta">${icon('flag')}${date(event().date)} ${event().location?`<span>•</span>${e(event().location)}`:''}</div><a href="/tv${contextQuery()}" class="btn primary">Acompanhar sorteio ${icon('arrow')}</a></div><div class="hero-race"><div class="track-art" aria-hidden="true"><svg viewBox="0 0 500 400" fill="none"><path d="M55 300V155c0-60 70-102 124-80l82 34c50 21 62-46 108-46 63 0 86 70 46 109l-84 82c-28 27-8 52 16 52h55c41 0 43 61 0 61H124c-43 0-69-27-69-67Z" stroke="currentColor" stroke-width="38"/><path d="M55 300V155c0-60 70-102 124-80l82 34c50 21 62-46 108-46 63 0 86 70 46 109l-84 82c-28 27-8 52 16 52h55c41 0 43 61 0 61H124c-43 0-69-27-69-67Z" stroke="var(--accent)" stroke-width="2" stroke-dasharray="8 8"/></svg><span class="track-pin">${icon('flag')}</span></div><div class="hero-live"><span class="eyebrow">ACONTECENDO AGORA</span><strong>${h?e(h.category):'Aguardando o evento'}</strong><span>${h?`Série ${h.series} · Bateria ${h.round}`:'O cronograma será publicado aqui'}</span>${h?badge(h.status,statusNames[h.status]):''}</div></div></section><div class="section-title"><div><span class="eyebrow">CENTRAL DO CAMPEONATO</span><h2>Seu acesso à pista.</h2></div><span data-connection></span></div><div class="portal-grid">${cards.map(([url,symbol,title,desc],i)=>`<a href="${url}${contextQuery()}" class="portal-card ${i===0?'featured':''}"><span class="portal-icon">${icon(symbol)}</span><span class="portal-number">0${i+1}</span><h3>${title}</h3><p>${desc}</p><span class="portal-arrow">${icon('arrow')}</span></a>`).join('')}${event().links.map((link,i)=>`<a href="${e(link.url)}" class="portal-card" target="_blank" rel="noopener noreferrer"><span class="portal-icon">${icon('external')}</span><span class="portal-number">${String(i+6).padStart(2,'0')}</span><h3>${e(link.title)}</h3><p>Informações e links da organização.</p><span class="portal-arrow">${icon('external')}</span></a>`).join('')}</div><section class="how-it-works"><span class="eyebrow">COMO FUNCIONA O SORTEIO</span><div><h2>O mesmo ponto de partida<br>para todo o grid.</h2><p>Os pilotos entram em ordem alfabética. Pilotos e karts são embaralhados separadamente. Cada número revelado abre uma janela de ${event().swapSeconds} segundos para solicitar uma troca à organização. As trocas entram em uma fila para um novo sorteio.</p></div></section>`;
 }
 function publicSchedule() {
   return `<div class="page-heading"><div><span class="eyebrow">ACOMPANHE O ANDAMENTO</span><h1>Cronograma do evento</h1><p>${e(event().name)}</p></div></div><div class="section-toolbar"><span class="schedule-delay">${icon('clock')}${e(delayNote())}</span><form class="search-form" id="search-form"><label class="sr-only" for="pilot-search">Pesquisar piloto</label><input id="pilot-search" name="search" placeholder="Pesquisar piloto nas baterias" value="${e(search)}"><button class="btn">Buscar</button></form></div><section class="panel">${scheduleTable()}</section>`;
@@ -280,6 +304,11 @@ const events = {
   'close-modal': () => { modal.close(); render(true); },
   'refresh-audit': () => refresh(),
   'logout': async () => { await api('/api/logout',{method:'POST',body:'{}'}); session={...session,authenticated:false}; render(true); },
+  'theme': () => {
+    adminTheme = adminTheme === 'dark' ? 'light' : 'dark';
+    try { localStorage.setItem(themeKey, adminTheme); } catch {}
+    applyTheme();
+  },
   'fullscreen': () => (document.fullscreenElement?document.exitFullscreen():document.documentElement.requestFullscreen()).catch(()=>toast('Use a opção de tela cheia do navegador.')),
   'sound': () => { sound=!sound; if(sound){audioContext??=new (window.AudioContext||window.webkitAudioContext)();audioContext.resume();} render(true); },
   'export-csv': () => { const h=heat(); const rows=[['Piloto','UF','Kart'],...[...h.pilotIds].sort((a,b)=>pilot(a).name.localeCompare(pilot(b).name,'pt-BR')).map(id=>[pilot(id).name,pilot(id).state,h.draw?.assignments[id]??''])]; const safe=v=>`"${String(v).replace(/^[=+@-]/,"'$&").replace(/"/g,'""')}"`; const blob=new Blob(['\uFEFF'+rows.map(r=>r.map(safe).join(';')).join('\r\n')],{type:'text/csv;charset=utf-8'}); const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='rg-racing-karts.csv';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000); }

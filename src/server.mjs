@@ -87,7 +87,7 @@ export function createApp(options = {}) {
     if (secure) res.setHeader('Strict-Transport-Security', 'max-age=31536000');
     try {
       const url = new URL(req.url, 'http://localhost');
-      if (req.method === 'GET' && url.pathname === '/health') return send(res, 200, { status: 'ok', version: '0.1.0' });
+      if (req.method === 'GET' && url.pathname === '/health') return send(res, 200, { status: 'ok', version: '0.1.1' });
       if (req.method === 'POST') {
         const origin = req.headers.origin;
         if (origin) must(new URL(origin).host === req.headers.host, 'Origem não autorizada.', 403);
@@ -173,7 +173,7 @@ export function createApp(options = {}) {
       }
       if (url.pathname.startsWith('/api/')) throw new RuleError('Rota não encontrada.', 404);
       must(req.method === 'GET' || req.method === 'HEAD', 'Método não permitido.', 405);
-      const files = { '/app.js': ['app.js','text/javascript'], '/styles.css': ['styles.css','text/css'], '/favicon.svg': ['favicon.svg','image/svg+xml'], '/stats.js': ['stats.js','text/javascript'] };
+      const files = { '/app.js': ['app.js','text/javascript'], '/styles.css': ['styles.css','text/css'], '/branding.css': ['branding.css','text/css'], '/assets/rg-racing-logo.png': ['assets/rg-racing-logo.png','image/png'], '/stats.js': ['stats.js','text/javascript'] };
       const allowedPage = /^\/(?:admin|tv|cronograma|ranking|piloto|karts)?\/?$/.test(url.pathname);
       must(files[url.pathname] || allowedPage, 'Página não encontrada.', 404);
       const [path,mime] = files[url.pathname] ?? ['index.html','text/html'];

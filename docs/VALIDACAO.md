@@ -15,3 +15,9 @@ O teste de navegador usa gestão e TV em contextos separados. Confere formação
 O teste do container roda em produção, sem dados de demonstração, com volume descartável, usuário sem root, raiz somente leitura, sem rede externa e com cookies Secure. Grava um piloto, reinicia o container e confere a preservação do registro. O teste de backup restaura uma cópia consistente incluindo transações em WAL e recusa sobrescrever backups existentes.
 
 As capturas geradas ficam em `artifacts/`, fora do Git. Os testes não representam uma conexão real de cronometragem, ensaio de carga ou validação do regulamento esportivo. Certificado HTTPS, DNS e comunicação com dispositivos na rede do evento precisam ser conferidos na implantação real.
+
+## Identidade visual e temas — 0.1.1
+
+Conferida a marca no perfil indicado pelo responsável e utilizado o PNG original do portal RG Racing, preservando as cores e a proporção. A aplicação serve o arquivo localmente. Portal, área do piloto, classificação e TVs passaram a ter fundo branco, com azul e preto na identidade.
+
+`npm run check`, os mesmos 18 testes de regras/API/backup e o fluxo de navegador foram executados novamente e aprovados. O navegador também confirmou o carregamento da logomarca, a troca de tema sem apagar os dados de login, a preferência escura após recarregar a gestão e o isolamento da aparência pública: abrir o portal no mesmo navegador mantém o fundo branco. Foram inspecionadas capturas da TV de sorteio, cronograma, gestão clara/escura e portal.

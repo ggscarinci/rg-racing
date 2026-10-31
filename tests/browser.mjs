@@ -20,8 +20,17 @@ try {
   for(const p of [page,tv])p.on('pageerror',err=>errors.push(err.message));
   page.setDefaultTimeout(7000);
   await page.goto(base+'/admin');
+  await page.locator('#login-form').waitFor();
+  assert.equal(await page.getAttribute('body','data-theme'),'light');
   await page.locator('[name=username]').fill('operador');await page.locator('[name=password]').fill('kart-demo-2026');
+  // Changing the theme must not discard fields already entered in the login form.
+  await page.locator('[data-action=theme]').click();
+  assert.equal(await page.getAttribute('body','data-theme'),'dark');
+  assert.equal(await page.locator('[name=password]').inputValue(),'kart-demo-2026');
   await page.locator('#login-form button').click();await page.locator('[data-action=formation]').first().waitFor();
+  assert.equal(await page.getAttribute('body','data-theme'),'dark');
+  await page.waitForFunction(()=>document.querySelector('.brand-logo')?.naturalWidth===365);
+  await page.locator('[data-action=theme]').click();
   await page.locator('[data-action=formation]').first().click();
   const inputs=page.locator('dialog [name=pilot]');
   for(let i=3;i<await inputs.count();i++)await inputs.nth(i).uncheck();
@@ -37,8 +46,24 @@ try {
   assert.equal(await page.locator('.current-kart').innerText(),await tv.locator('.current-kart').innerText());
   assert.equal(await tv.locator('.draw-queue li').count(),3);
   assert.equal(await tv.locator('[data-action=manage-swap]').count(),0);
+  assert.equal(await tv.evaluate(()=>getComputedStyle(document.body).backgroundColor),'rgb(255, 255, 255)');
   await page.screenshot({path:join(out,'rg-racing-gestao.png'),fullPage:true});
   await tv.screenshot({path:join(out,'rg-racing-tv.png'),fullPage:true});
+  await page.locator('[data-action=theme]').click();await page.reload();
+  await page.locator('[data-action=resume]').waitFor();
+  assert.equal(await page.getAttribute('body','data-theme'),'dark');
+  assert.equal(await page.evaluate(()=>getComputedStyle(document.body).backgroundColor),'rgb(16, 20, 29)');
+  await page.screenshot({path:join(out,'rg-racing-gestao-escuro.png'),fullPage:true});
+  // The public view stays white even in the same browser where dark mode was selected.
+  const sameBrowserPublic=await op.newPage();await sameBrowserPublic.goto(base+'/');
+  await sameBrowserPublic.locator('.hero').waitFor();
+  assert.equal(await sameBrowserPublic.getAttribute('body','data-theme'),'light');
+  assert.equal(await sameBrowserPublic.evaluate(()=>getComputedStyle(document.body).backgroundColor),'rgb(255, 255, 255)');
+  await sameBrowserPublic.close();
+  const scheduleTV=await screen.newPage();await scheduleTV.goto(base+'/tv?modo=cronograma');
+  await scheduleTV.locator('.tv-schedule-columns').waitFor();
+  await scheduleTV.screenshot({path:join(out,'rg-racing-tv-cronograma.png'),fullPage:true});await scheduleTV.close();
+  await page.locator('[data-action=theme]').click();
   const landing=await screen.newPage();landing.on('pageerror',err=>errors.push(err.message));
   await landing.goto(base+'/');await landing.locator('.hero').waitFor();await landing.screenshot({path:join(out,'rg-racing-portal.png'),fullPage:true});
   await page.locator('[data-action=resume]').click();
@@ -76,6 +101,6 @@ try {
   await screen.setOffline(true);await tv.locator('.connection.offline').first().waitFor({timeout:6000});
   await screen.setOffline(false);await tv.locator('.connection:not(.offline)').first().waitFor({timeout:7000});
   assert.deepEqual(errors,[]);
-  console.log('Browser OK: gestão + TV sincronizadas, trocas na janela e tardias, resultados, reconexão e 6 páginas mobile.');
+  console.log('Browser OK: gestão + TV sincronizadas, trocas, resultados, reconexão, 6 páginas mobile, logo original e temas claro/escuro persistidos sem alterar as telas públicas brancas.');
   console.log('Capturas em artifacts/.');
 } finally {await browser?.close();app.close();rmSync(dir,{recursive:true,force:true});}

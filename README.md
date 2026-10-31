@@ -2,6 +2,8 @@
 
 Sistema independente para campeonatos de kart indoor. Repositório, serviço, autenticação e banco próprios. Pode compartilhar uma máquina e o proxy HTTPS com outros sistemas.
 
+A identidade visual usa azul, branco e preto da RG Racing, com a [logomarca original](public/assets/README.md). Portal, painéis do piloto, classificação e TVs usam fundo branco. A gestão oferece o botão **Tema claro / Tema escuro** no cabeçalho e na tela de login; a preferência fica neste navegador e não altera a transmissão para a TV.
+
 A primeira versão atende cadastro de pilotos e frota, formação de baterias, sorteio, trocas antes da corrida, tela pública para TV, cronograma, resultados manuais, classificação e painel do piloto. A integração com cronometragem/Race Monitor e o ranking de performance dos karts ficam para a próxima etapa.
 
 ## Executar em demonstração

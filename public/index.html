@@ -3,16 +3,18 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#101916">
+  <meta name="theme-color" content="#ffffff">
   <meta name="description" content="RG Racing. Sorteios, parque fechado e acompanhamento de campeonatos de kart em tempo real.">
   <title>RG Racing • Controle de prova</title>
-  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="icon" href="/assets/rg-racing-logo.png" type="image/png">
+  <link rel="preload" href="/assets/rg-racing-logo.png" as="image">
   <link rel="stylesheet" href="/styles.css">
+  <link rel="stylesheet" href="/branding.css">
   <script type="module" src="/app.js"></script>
 </head>
 <body>
   <a class="skip-link" href="#main">Ir ao conteúdo</a>
-  <div id="app"><div class="initial-loader"><strong>RG<span>RACING</span></strong><p>Conectando ao controle de prova…</p></div></div>
+  <div id="app"><div class="initial-loader"><img src="/assets/rg-racing-logo.png" alt="RG Racing" width="220" height="110"><p>Conectando ao controle de prova…</p></div></div>
   <dialog id="modal"></dialog>
   <div id="toast" role="status" aria-live="polite"></div>
 </body>
