@@ -1,0 +1,37 @@
+name: rg-racing
+services:
+  app:
+    build: .
+    image: rg-racing:${RG_RACING_VERSION:-local}
+    restart: unless-stopped
+    init: true
+    environment:
+      NODE_ENV: production
+      ADMIN_USERNAME: ${ADMIN_USERNAME:-operador}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:?Configure ADMIN_PASSWORD no .env do RG Racing}
+      SECURE_COOKIES: ${SECURE_COOKIES:-1}
+      TRUST_PROXY: ${TRUST_PROXY:-0}
+      DATA_DIR: /app/data
+    ports:
+      - "127.0.0.1:${RG_RACING_PORT:-3007}:3000"
+    volumes:
+      - rg_racing_data:/app/data
+    networks:
+      - rg_private
+    read_only: true
+    tmpfs:
+      - /tmp:size=16m,noexec,nosuid
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    mem_limit: 256m
+    cpus: 1.0
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: '3'
+volumes:
+  rg_racing_data:
+    name: rg_racing_data
+networks:
+  rg_private:

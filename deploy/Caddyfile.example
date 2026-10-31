@@ -1,0 +1,11 @@
+# Trecho independente a integrar no Caddy existente após definir domínio e rede.
+# Não substitua o Caddyfile completo e não inicie outro proxy nas portas 80/443.
+racing.exemplo.com.br {
+    encode zstd gzip
+    reverse_proxy rg-racing:3000 {
+        # SSE: entrega imediatamente cada atualização do sorteio.
+        flush_interval -1
+    }
+}
+# Se o Caddy roda como serviço no host, use 127.0.0.1:3007 como upstream.
+# Se roda em container, use compose.proxy.yml para compartilhar sua rede.

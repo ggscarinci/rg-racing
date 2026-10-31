@@ -1,0 +1,10 @@
+# Use quando o Caddy existente roda em Docker. Informe a rede real em PROXY_NETWORK.
+services:
+  app:
+    networks:
+      rg_proxy:
+        aliases: [rg-racing]
+networks:
+  rg_proxy:
+    external: true
+    name: ${PROXY_NETWORK:?Informe a rede Docker do Caddy existente}

@@ -1,0 +1,52 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { randomUUID } from 'node:crypto';
+import { createApp } from '../src/server.mjs';
+
+test('authenticated API, atomic writes, idempotency, concurrency, SSE and restart persistence', async t => {
+  const dir = mkdtempSync(join(tmpdir(),'rg-racing-test-'));
+  let app = createApp({dataDir:dir,demo:true});
+  await new Promise(r=>app.server.listen(0,'127.0.0.1',r));
+  let base=`http://127.0.0.1:${app.server.address().port}`;
+  let cookie='';
+  const request=async(path,body,headers={})=>fetch(base+path,{method:body?'POST':'GET',headers:{'Content-Type':'application/json',Cookie:cookie,...headers},body:body?JSON.stringify(body):undefined});
+  try {
+    assert.equal((await request('/api/admin/state')).status,401);
+    assert.equal((await request('/api/login',{username:'operador',password:'wrong'})).status,401);
+    const login=await request('/api/login',{username:'operador',password:'kart-demo-2026'});
+    assert.equal(login.status,200);cookie=login.headers.get('set-cookie').split(';')[0];assert.match(login.headers.get('set-cookie'),/HttpOnly/);
+    const initial=await (await request('/api/admin/state')).json();
+    const id=randomUUID(), body={action:'pilot.add',data:{pilots:[{name:'Novo Piloto',state:'GO'}]}};
+    const headers={'If-Match':String(initial.version),'Idempotency-Key':id};
+    const first=await request('/api/admin/command',body,headers);assert.equal(first.status,200);
+    assert.equal((await request('/api/admin/command',body,headers)).status,200);
+    const changed=await (await request('/api/admin/state')).json();
+    assert.equal(changed.pilots.length,initial.pilots.length+1);
+    assert.equal((await request('/api/admin/command',{...body,data:{name:'Different Name'}},headers)).status,409);
+    assert.equal((await request('/api/admin/command',{...body,data:{name:'Other Name'}},{...headers,'Idempotency-Key':randomUUID()})).status,409);
+    const failed=await request('/api/admin/command',{action:'pilot.add',data:{pilots:[{name:'Should Roll Back'},{name:'Novo Piloto'}]}},{'If-Match':String(changed.version),'Idempotency-Key':randomUUID()});
+    assert.equal(failed.status,422);
+    assert.equal((await (await request('/api/admin/state')).json()).pilots.some(p=>p.name==='Should Roll Back'),false);
+    assert.equal((await request('/api/admin/command',body,{...headers,Origin:'https://evil.example'})).status,403);
+    assert.equal((await request('/api/login',{username:'x',password:'x'},{Origin:'https://evil.example'})).status,403);
+    const controller=new AbortController();
+    const stream=await fetch(base+'/api/stream',{signal:controller.signal});assert.equal(stream.headers.get('content-type'),'text/event-stream');
+    const reader=stream.body.getReader();const packet=new TextDecoder().decode((await reader.read()).value);assert.match(packet,/event: state/);controller.abort();
+    const latest=await (await request('/api/admin/state')).json();
+    assert.equal((await request('/api/admin/command',{action:'draw.prepare',data:{}},{'If-Match':String(latest.version),'Idempotency-Key':randomUUID()})).status,200);
+    const pub=await (await request('/api/state')).json();assert.equal(pub.heats[0].draw.pool,undefined);
+    const exported=await (await request('/api/admin/export')).json();assert.ok(exported.state.heats[0].draw.initialKarts);assert.ok(exported.audit.every(a=>a.hash.length===64));
+    app.close();app=createApp({dataDir:dir,demo:true});await new Promise(r=>app.server.listen(0,'127.0.0.1',r));
+    base=`http://127.0.0.1:${app.server.address().port}`;
+    const restored=await (await request('/api/admin/state')).json();assert.equal(restored.pilots.length,changed.pilots.length);assert.equal(restored.heats[0].draw.phase,'ready');
+    assert.equal((await request('/api/admin/password',{currentPassword:'kart-demo-2026',newPassword:'new-test-password-2026'})).status,200);
+    assert.equal((await request('/api/admin/state')).status,401);
+    assert.equal((await request('/api/login',{username:'operador',password:'kart-demo-2026'})).status,401);
+    assert.equal((await request('/api/login',{username:'operador',password:'new-test-password-2026'})).status,200);
+    for(const path of ['/','/admin','/tv','/cronograma','/ranking','/piloto','/karts','/app.js','/stats.js','/styles.css']) assert.equal((await request(path)).status,200,path);
+    assert.equal((await request('/src/server.mjs')).status,404);
+  } finally { app.close();rmSync(dir,{recursive:true,force:true}); }
+});
